@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const APP_URL = import.meta.env.VITE_APP_URL  || 'http://localhost:5173';
+const APP_URL = import.meta.env.VITE_APP_URL  || window.location.origin;
 const WS_URL  = (import.meta.env.VITE_API_URL || 'http://localhost:3001')
   .replace('https://', 'wss://')
   .replace('http://', 'ws://');
