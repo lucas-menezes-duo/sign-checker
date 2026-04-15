@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SignaturePad from 'signature_pad';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const WS_URL   = API_BASE.replace(/^https/, 'wss').replace(/^http/, 'ws');
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const WS_URL  = (import.meta.env.VITE_API_URL || 'http://localhost:3001')
+  .replace('https://', 'wss://')
+  .replace('http://', 'ws://');
 
 export default function ClientView() {
   const [searchParams]  = useSearchParams();

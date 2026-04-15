@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const APP_URL  = import.meta.env.VITE_APP_URL  || 'http://localhost:5173';
-const WS_URL   = API_BASE.replace(/^https/, 'wss').replace(/^http/, 'ws');
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const APP_URL = import.meta.env.VITE_APP_URL  || 'http://localhost:5173';
+const WS_URL  = (import.meta.env.VITE_API_URL || 'http://localhost:3001')
+  .replace('https://', 'wss://')
+  .replace('http://', 'ws://');
 
 export default function AttendantView() {
   const [cnhFile,    setCnhFile]    = useState(null);
@@ -43,7 +45,7 @@ export default function AttendantView() {
     try {
       const form = new FormData();
       form.append('cnh', cnhFile);
-      const res  = await fetch(`${API_BASE}/api/session/create`, { method: 'POST', body: form });
+      const res  = await fetch(`${API_URL}/api/session/create`, { method: 'POST', body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Erro ao criar sessão.');
       setSessionId(data.sessionId);
