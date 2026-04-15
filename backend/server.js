@@ -105,58 +105,7 @@ wss.on('connection', (ws) => {
       broadcast(session, { type: 'processing' });
 
       try {
-        const response = await client.messages.create({
-          model: 'claude-opus-4-5',
-          max_tokens: 512,
-          system: [
-            {
-              type: 'text',
-              text: 'Você é um perito em análise grafotécnica. Sua tarefa é comparar duas assinaturas com critério técnico rigoroso. Retorne APENAS um JSON válido, sem markdown, sem blocos de código, sem texto extra.',
-              cache_control: { type: 'ephemeral' },
-            },
-          ],
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'image',
-                  source: { type: 'base64', media_type: session.mimeType, data: session.cnh },
-                },
-                {
-                  type: 'image',
-                  source: { type: 'base64', media_type: 'image/png', data: msg.data },
-                },
-                {
-                  type: 'text',
-                  text: `Compare as duas assinaturas seguindo estas regras em ordem de prioridade:
-
-REGRA 1 — COMPLETUDE (verificar primeiro, antes de qualquer outra análise):
-Conte quantas palavras/blocos distintos existem na assinatura da CNH (imagem 1).
-Conte quantas palavras/blocos distintos existem na assinatura do cliente (imagem 2).
-Se a assinatura do cliente tiver MENOS blocos que a da CNH, ela é INCOMPLETA.
-Uma assinatura INCOMPLETA recebe score MÁXIMO de 30 e approved = false, sem exceção.
-
-REGRA 2 — SIMILARIDADE GRÁFICA (somente se a completude estiver OK):
-Avalie inclinação, pressão, fluidez, proporções e traços característicos.
-Score final entre 0 e 100. approved = true somente se score >= 70.
-
-Retorne APENAS um JSON válido (sem markdown, sem texto extra):
-{"score": <número 0-100>, "approved": <boolean>, "message": <string em português de 1 frase explicando o resultado>}`,
-                },
-              ],
-            },
-          ],
-        });
-
-        const block = response.content[0];
-        if (block.type !== 'text') throw new Error('Resposta inesperada da API.');
-
-        const raw = block.text.trim()
-          .replace(/^```(?:json)?\n?/i, '')
-          .replace(/\n?```$/i, '');
-        const result = JSON.parse(raw);
-
+        const result = await compareSignatures(session.cnh, session.mimeType, msg.data);
         session.status = 'complete';
         session.result = result;
         broadcast(session, { type: 'result', ...result });
@@ -175,6 +124,95 @@ Retorne APENAS um JSON válido (sem markdown, sem texto extra):
     }
   });
 });
+
+/* ── Helpers ────────────────────────────────────────────────────── */
+
+function normalizeWords(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-záàâãéèêíïóôõöúüçñ\s]/gi, '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function parseJson(text) {
+  const raw = text.trim()
+    .replace(/^```(?:json)?\n?/i, '')
+    .replace(/\n?```$/i, '');
+  return JSON.parse(raw);
+}
+
+async function ocrImage(base64, mimeType, prompt) {
+  const res = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 64,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64 } },
+        { type: 'text', text: prompt },
+      ],
+    }],
+  });
+  return res.content[0]?.text?.trim() ?? '';
+}
+
+/* ── Hybrid comparison: OCR → text check → graphic check ────────── */
+
+async function compareSignatures(cnhBase64, cnhMimeType, sigBase64) {
+
+  /* ETAPA 1 — OCR paralelo */
+  const [cnhText, sigText] = await Promise.all([
+    ocrImage(
+      cnhBase64, cnhMimeType,
+      'Extraia apenas o texto da assinatura presente nesta imagem de CNH. ' +
+      'Retorne APENAS as palavras da assinatura, sem pontuação, em letras minúsculas, separadas por espaço. Nada mais.'
+    ),
+    ocrImage(
+      sigBase64, 'image/png',
+      'Extraia apenas o texto escrito nesta imagem de assinatura. ' +
+      'Retorne APENAS as palavras visíveis, sem pontuação, em letras minúsculas, separadas por espaço. Nada mais.'
+    ),
+  ]);
+
+  /* ETAPA 2 — Validação textual */
+  const cnhWords = normalizeWords(cnhText);
+  const sigWords = normalizeWords(sigText);
+  const missing  = cnhWords.filter(w => !sigWords.includes(w));
+
+  if (missing.length > 0) {
+    return {
+      score:    20,
+      approved: false,
+      message:  `Assinatura incompleta: as seguintes partes estão faltando: ${missing.join(', ')}`,
+    };
+  }
+
+  /* ETAPA 3 — Validação gráfica */
+  const res = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 256,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: cnhMimeType, data: cnhBase64 } },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png',  data: sigBase64 } },
+        {
+          type: 'text',
+          text: 'Você é um perito grafotécnico. As duas assinaturas já foram confirmadas como textualmente completas. ' +
+                'Agora avalie exclusivamente o estilo gráfico: inclinação, fluidez, forma das letras, proporções e traços característicos. ' +
+                'Retorne APENAS um JSON com: score (0-100), approved (true se score >= 70), ' +
+                'message (string em português explicando o resultado graficamente em 1 frase).',
+        },
+      ],
+    }],
+  });
+
+  const block = res.content[0];
+  if (block.type !== 'text') throw new Error('Resposta inesperada da API.');
+  return parseJson(block.text);
+}
 
 function broadcast(session, msg) {
   const data = JSON.stringify(msg);
