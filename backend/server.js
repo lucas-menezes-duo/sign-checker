@@ -129,20 +129,20 @@ wss.on('connection', (ws) => {
                 },
                 {
                   type: 'text',
-                  text: `Você é um perito em análise grafotécnica. Compare as duas imagens de assinatura com critério técnico rigoroso.
+                  text: `Compare as duas assinaturas seguindo estas regras em ordem de prioridade:
 
-Avalie os seguintes aspectos:
-1. Completude: a assinatura do cliente contém todos os elementos presentes na assinatura da CNH? Se a assinatura da CNH tiver sobrenome e a do cliente não tiver, isso é uma diferença grave.
-2. Estilo gráfico: inclinação, pressão, fluidez e forma das letras
-3. Proporções: tamanho relativo das letras e elementos
-4. Elementos característicos: traços, rubricas, ou elementos únicos presentes em ambas
+REGRA 1 — COMPLETUDE (verificar primeiro, antes de qualquer outra análise):
+Conte quantas palavras/blocos distintos existem na assinatura da CNH (imagem 1).
+Conte quantas palavras/blocos distintos existem na assinatura do cliente (imagem 2).
+Se a assinatura do cliente tiver MENOS blocos que a da CNH, ela é INCOMPLETA.
+Uma assinatura INCOMPLETA recebe score MÁXIMO de 30 e approved = false, sem exceção.
 
-Seja rigoroso: uma assinatura incompleta (faltando partes do nome que aparecem na CNH) deve ter score máximo de 40, independente da similaridade do estilo.
+REGRA 2 — SIMILARIDADE GRÁFICA (somente se a completude estiver OK):
+Avalie inclinação, pressão, fluidez, proporções e traços característicos.
+Score final entre 0 e 100. approved = true somente se score >= 70.
 
-Retorne APENAS um JSON (sem markdown, sem texto extra) com os campos:
-- score: número de 0 a 100 indicando similaridade (considere 70 como mínimo para aprovação)
-- approved: boolean, true somente se score >= 70
-- message: string em português explicando o resultado em 1 frase, mencionando especificamente o que está faltando ou diferente`,
+Retorne APENAS um JSON válido (sem markdown, sem texto extra):
+{"score": <número 0-100>, "approved": <boolean>, "message": <string em português de 1 frase explicando o resultado>}`,
                 },
               ],
             },

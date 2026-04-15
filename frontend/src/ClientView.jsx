@@ -198,7 +198,6 @@ export default function ClientView() {
               <h3 style={{ fontSize: '1.3rem' }}>
                 {result.approved ? 'Assinatura Aprovada ✅' : 'Tente Novamente ❌'}
               </h3>
-              <p className="result-message">{result.message}</p>
               {!result.approved && (
                 <button className="btn-retry" type="button" onClick={() => {
                   setStatus('idle'); setResult(null); clearSignature();
