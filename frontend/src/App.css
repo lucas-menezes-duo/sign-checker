@@ -647,6 +647,118 @@ body {
 }
 
 /* ─────────────────────────────────────────────
+   Solo panel (single centered card)
+   ───────────────────────────────────────────── */
+.solo-panel {
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ─────────────────────────────────────────────
+   Session code block
+   ───────────────────────────────────────────── */
+.session-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.session-code-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 28px 36px;
+  text-align: center;
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+}
+
+.session-label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+
+.session-code {
+  display: block;
+  font-size: clamp(42px, 10vw, 64px);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--primary);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.session-hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 10px 0 0;
+}
+
+/* ─────────────────────────────────────────────
+   QR code block
+   ───────────────────────────────────────────── */
+.qr-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: 24px;
+}
+
+.qr-url {
+  font-size: 11px;
+  color: var(--text-muted);
+  word-break: break-all;
+  text-align: center;
+  max-width: 260px;
+  margin: 0;
+}
+
+/* ─────────────────────────────────────────────
+   Status indicators
+   ───────────────────────────────────────────── */
+.status-waiting {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+}
+
+.pulse-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.75); }
+}
+
+/* ─────────────────────────────────────────────
    Responsive — tablet
    ───────────────────────────────────────────── */
 @media (min-width: 681px) and (max-width: 900px) {

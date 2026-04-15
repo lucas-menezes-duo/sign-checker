@@ -1,23 +1,27 @@
 # Sign Checker — Verificador de Assinaturas
 
-Aplicação fullstack que compara a assinatura de uma CNH com a assinatura coletada digitalmente, utilizando a API de visão do Claude (Anthropic) para análise forense. O resultado inclui uma pontuação de similaridade (0–100) e uma aprovação automática quando a similaridade atinge 60% ou mais.
+Aplicação fullstack que compara a assinatura de uma CNH com a assinatura coletada digitalmente, utilizando a API de visão do Claude (Anthropic) para análise forense.
 
-## Estrutura do projeto
+## Arquitetura
 
 ```
 sign-checker/
-├── backend/      # Node.js + Express + @anthropic-ai/sdk
-└── frontend/     # React + Vite + signature_pad
+├── backend/    # Node.js + Express + WebSocket (ws) + @anthropic-ai/sdk
+└── frontend/   # React + Vite + react-router-dom + signature_pad + qrcode.react
 ```
+
+### Fluxo de uso
+1. **Atendente** (`/`) faz upload da assinatura da CNH e cria uma sessão — recebe um código de 6 caracteres e um QR Code.
+2. **Cliente** (`/client?session=XXX`) acessa o link/QR Code, assina na tela e envia.
+3. O backend compara as duas assinaturas via Claude Vision e transmite o resultado em tempo real via **WebSocket** para os dois participantes.
 
 ---
 
 ## Como rodar localmente
 
 ### Pré-requisitos
-
 - Node.js 20.19+ ou 22+
-- Uma chave de API da Anthropic ([console.anthropic.com](https://console.anthropic.com))
+- Chave de API da Anthropic ([console.anthropic.com](https://console.anthropic.com))
 
 ### 1. Backend
 
@@ -26,17 +30,15 @@ cd backend
 npm install
 ```
 
-Crie o arquivo `.env`:
-
+Crie `.env`:
 ```
 ANTHROPIC_API_KEY=sua_chave_aqui
 ```
 
-Inicie o servidor:
-
+Inicie:
 ```bash
 npm run dev
-# Servidor disponível em http://localhost:3001
+# http://localhost:3001
 ```
 
 ### 2. Frontend
@@ -46,53 +48,55 @@ cd frontend
 npm install
 ```
 
-Crie o arquivo `.env.local` (opcional — se omitido, usa `http://localhost:3001` como padrão):
-
+Crie `.env.local` (opcional):
 ```
 VITE_API_URL=http://localhost:3001
+VITE_APP_URL=http://localhost:5173
 ```
 
-Inicie o servidor de desenvolvimento:
-
+Inicie:
 ```bash
 npm run dev
-# App disponível em http://localhost:5173
+# http://localhost:5173
 ```
+
+Acesse `http://localhost:5173` como atendente e `http://localhost:5173/client?session=CÓDIGO` como cliente.
 
 ---
 
 ## Deploy no Render (backend)
 
-1. Crie uma conta em [render.com](https://render.com) e clique em **New → Web Service**.
-2. Conecte o repositório Git e configure:
+1. Acesse [render.com](https://render.com) → **New → Web Service**.
+2. Conecte o repositório e configure:
    - **Root Directory:** `backend`
    - **Build Command:** `npm install`
    - **Start Command:** `node server.js`
-   - **Environment:** Node
-3. Na seção **Environment Variables**, adicione:
+3. Em **Environment Variables**, adicione:
+
    | Chave | Valor |
    |-------|-------|
    | `ANTHROPIC_API_KEY` | sua chave da Anthropic |
-4. Clique em **Create Web Service**.
-5. Após o deploy, copie a URL gerada (ex.: `https://sign-checker-api.onrender.com`).
 
-> A variável `PORT` é injetada automaticamente pelo Render — o servidor já está configurado para lê-la via `process.env.PORT`.
+4. Clique em **Create Web Service** e copie a URL gerada (ex.: `https://sign-checker-api.onrender.com`).
+
+> `PORT` é injetado automaticamente pelo Render.
 
 ---
 
 ## Deploy na Vercel (frontend)
 
-1. Crie uma conta em [vercel.com](https://vercel.com) e clique em **Add New → Project**.
-2. Importe o repositório Git e configure:
+1. Acesse [vercel.com](https://vercel.com) → **Add New → Project**.
+2. Importe o repositório e configure:
    - **Root Directory:** `frontend`
    - **Framework Preset:** Vite (detectado automaticamente)
-3. Na seção **Environment Variables**, adicione:
+3. Em **Environment Variables**, adicione:
+
    | Chave | Valor |
    |-------|-------|
    | `VITE_API_URL` | URL do backend no Render (ex.: `https://sign-checker-api.onrender.com`) |
-4. Clique em **Deploy**.
+   | `VITE_APP_URL` | URL do frontend na Vercel (ex.: `https://sign-checker.vercel.app`) |
 
-> Variáveis Vite precisam do prefixo `VITE_` para serem expostas ao bundle do navegador.
+4. Clique em **Deploy**.
 
 ---
 
@@ -101,5 +105,6 @@ npm run dev
 | Variável | Onde | Descrição |
 |----------|------|-----------|
 | `ANTHROPIC_API_KEY` | Backend | Chave de API da Anthropic |
-| `PORT` | Backend | Porta do servidor (injetada automaticamente pelo Render) |
-| `VITE_API_URL` | Frontend | URL base do backend (sem barra final) |
+| `PORT` | Backend | Porta do servidor (injetada pelo Render) |
+| `VITE_API_URL` | Frontend | URL base do backend, sem barra final |
+| `VITE_APP_URL` | Frontend | URL base do frontend (usada no QR Code) |
