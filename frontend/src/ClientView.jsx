@@ -114,9 +114,11 @@ export default function ClientView() {
 
       <main className="main">
 
-        {/* ── Signature canvas (visible until sent) ── */}
-        {(status === 'idle' || status === 'sent') && (
-          <section className="panel solo-panel">
+        {/* ── Signature canvas (always in DOM — SignaturePad must stay bound to the same canvas) ── */}
+        <section
+          className="panel solo-panel"
+          style={{ display: (status === 'idle' || status === 'sent') ? undefined : 'none' }}
+        >
             <div className="panel-title">
               <span className="step-badge" aria-hidden="true">✍</span>
               <h2>Sua Assinatura</h2>
@@ -162,7 +164,6 @@ export default function ClientView() {
               )}
             </div>
           </section>
-        )}
 
         {/* ── Analysing ── */}
         {status === 'processing' && (
