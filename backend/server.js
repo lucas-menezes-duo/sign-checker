@@ -111,7 +111,7 @@ wss.on('connection', (ws) => {
           system: [
             {
               type: 'text',
-              text: 'Você é um especialista em análise forense de assinaturas. Sua tarefa é comparar duas assinaturas e avaliar o grau de similaridade entre elas. Retorne APENAS um JSON válido, sem markdown, sem blocos de código, sem texto extra.',
+              text: 'Você é um perito em análise grafotécnica. Sua tarefa é comparar duas assinaturas com critério técnico rigoroso. Retorne APENAS um JSON válido, sem markdown, sem blocos de código, sem texto extra.',
               cache_control: { type: 'ephemeral' },
             },
           ],
@@ -129,7 +129,20 @@ wss.on('connection', (ws) => {
                 },
                 {
                   type: 'text',
-                  text: 'analise as duas imagens de assinatura e retorne APENAS um JSON (sem markdown, sem texto extra) com os campos: score (número de 0 a 100 indicando similaridade), approved (boolean, true se score >= 60), message (string em português explicando o resultado em 1 frase)',
+                  text: `Você é um perito em análise grafotécnica. Compare as duas imagens de assinatura com critério técnico rigoroso.
+
+Avalie os seguintes aspectos:
+1. Completude: a assinatura do cliente contém todos os elementos presentes na assinatura da CNH? Se a assinatura da CNH tiver sobrenome e a do cliente não tiver, isso é uma diferença grave.
+2. Estilo gráfico: inclinação, pressão, fluidez e forma das letras
+3. Proporções: tamanho relativo das letras e elementos
+4. Elementos característicos: traços, rubricas, ou elementos únicos presentes em ambas
+
+Seja rigoroso: uma assinatura incompleta (faltando partes do nome que aparecem na CNH) deve ter score máximo de 40, independente da similaridade do estilo.
+
+Retorne APENAS um JSON (sem markdown, sem texto extra) com os campos:
+- score: número de 0 a 100 indicando similaridade (considere 70 como mínimo para aprovação)
+- approved: boolean, true somente se score >= 70
+- message: string em português explicando o resultado em 1 frase, mencionando especificamente o que está faltando ou diferente`,
                 },
               ],
             },
