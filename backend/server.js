@@ -158,38 +158,52 @@ async function ocrImage(base64, mimeType, prompt) {
   return res.content[0]?.text?.trim() ?? '';
 }
 
-/* ── Hybrid comparison: OCR → text check → graphic check ────────── */
+/* ── Hybrid comparison: classify → optional text check → graphic ── */
 
 async function compareSignatures(cnhBase64, cnhMimeType, sigBase64) {
 
-  /* ETAPA 1 — OCR paralelo */
-  const [cnhText, sigText] = await Promise.all([
-    ocrImage(
-      cnhBase64, cnhMimeType,
-      'Extraia apenas o texto da assinatura presente nesta imagem de CNH. ' +
-      'Retorne APENAS as palavras da assinatura, sem pontuação, em letras minúsculas, separadas por espaço. Nada mais.'
-    ),
-    ocrImage(
+  /* ETAPA 1 — Classificação da assinatura da CNH */
+  const classifyRes = await client.messages.create({
+    model: 'claude-opus-4-5',
+    max_tokens: 128,
+    messages: [{
+      role: 'user',
+      content: [
+        { type: 'image', source: { type: 'base64', media_type: cnhMimeType, data: cnhBase64 } },
+        {
+          type: 'text',
+          text: "Analise a assinatura nesta CNH. Ela contém texto legível (letras ou palavras identificáveis) ou é predominantemente gráfica (rabisco, rubrica, traços abstratos)? Retorne APENAS um JSON com: type ('text' ou 'graphic'), words (array com as palavras encontradas em lowercase, ou array vazio se gráfica)",
+        },
+      ],
+    }],
+  });
+
+  const classification = parseJson(classifyRes.content[0].text);
+  const cnhWords = (classification.words ?? [])
+    .map(w => w.toLowerCase().replace(/[^a-záàâãéèêíïóôõöúüçñ]/gi, '').trim())
+    .filter(Boolean);
+  const isTextBased = classification.type === 'text' && cnhWords.length > 0;
+
+  /* ETAPA 2 — Validação textual (somente se a CNH tem texto legível) */
+  if (isTextBased) {
+    const sigText  = await ocrImage(
       sigBase64, 'image/png',
       'Extraia apenas o texto escrito nesta imagem de assinatura. ' +
       'Retorne APENAS as palavras visíveis, sem pontuação, em letras minúsculas, separadas por espaço. Nada mais.'
-    ),
-  ]);
+    );
+    const sigWords = normalizeWords(sigText);
+    const missing  = cnhWords.filter(w => !sigWords.includes(w));
 
-  /* ETAPA 2 — Validação textual */
-  const cnhWords = normalizeWords(cnhText);
-  const sigWords = normalizeWords(sigText);
-  const missing  = cnhWords.filter(w => !sigWords.includes(w));
-
-  if (missing.length > 0) {
-    return {
-      score:    20,
-      approved: false,
-      message:  `Assinatura incompleta: as seguintes partes estão faltando: ${missing.join(', ')}`,
-    };
+    if (missing.length > 0) {
+      return {
+        score:    20,
+        approved: false,
+        message:  `Assinatura incompleta: as seguintes partes estão faltando: ${missing.join(', ')}`,
+      };
+    }
   }
 
-  /* ETAPA 3 — Validação gráfica */
+  /* ETAPA 3 — Validação gráfica (sempre executada se chegou aqui) */
   const res = await client.messages.create({
     model: 'claude-opus-4-5',
     max_tokens: 256,
@@ -200,10 +214,10 @@ async function compareSignatures(cnhBase64, cnhMimeType, sigBase64) {
         { type: 'image', source: { type: 'base64', media_type: 'image/png',  data: sigBase64 } },
         {
           type: 'text',
-          text: 'Você é um perito grafotécnico. As duas assinaturas já foram confirmadas como textualmente completas. ' +
-                'Agora avalie exclusivamente o estilo gráfico: inclinação, fluidez, forma das letras, proporções e traços característicos. ' +
+          text: 'Você é um perito grafotécnico. Compare o estilo gráfico das duas assinaturas: ' +
+                'inclinação, fluidez, forma, proporções e traços característicos. ' +
                 'Retorne APENAS um JSON com: score (0-100), approved (true se score >= 70), ' +
-                'message (string em português explicando o resultado graficamente em 1 frase).',
+                'message (string em português em 1 frase explicando o resultado)',
         },
       ],
     }],
